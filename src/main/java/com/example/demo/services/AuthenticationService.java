@@ -1,12 +1,15 @@
 package com.example.demo.services;
 
+import com.example.demo.entities.Token;
 import com.example.demo.entities.User;
+import com.example.demo.enums.TokenTypeEnum;
 import com.example.demo.exceptions.user.UserAlreadyExistsException;
 import com.example.demo.mappers.UserMapper;
 import com.example.demo.models.LoginResponseModel;
 import com.example.demo.models.LoginUserModel;
 import com.example.demo.models.RegisterUserModel;
 import com.example.demo.models.UserModel;
+import com.example.demo.repositories.ITokenRepository;
 import com.example.demo.repositories.IUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,6 +22,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AuthenticationService {
     private final IUserRepository userRepository;
+    private final ITokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
@@ -47,10 +51,43 @@ public class AuthenticationService {
                 .orElseThrow(()-> new UsernameNotFoundException("User with email " + model.getEmail() + " not found"));
 
         String jwtToken = jwtService.generateToken(authenticatedUser);
+        String refreshToken = jwtService.generateRefreshToken(authenticatedUser);
 
-        LoginResponseModel loginResponse = new LoginResponseModel();
-        loginResponse.setToken(jwtToken);
+        revokeAllUserTokens(authenticatedUser.getId());
+            System.out.println("JWT token: " + jwtToken);
+            System.out.println("Refresh token: " + refreshToken);
+            System.out.println(authenticatedUser);
+        saveUserToken(authenticatedUser, jwtToken, refreshToken);
 
-        return loginResponse;
+        return LoginResponseModel.builder().token(jwtToken).refreshToken(refreshToken).build();
+    }
+
+    private void saveUserToken(User user, String jwtToken, String refreshToken) {
+        var token = Token.builder()
+                .user(user)
+                .token(jwtToken)
+                .refreshToken(refreshToken)
+                .tokenType(TokenTypeEnum.BEARER)
+                .expired(false)
+                .revoked(false)
+                .build();
+
+        System.out.println("Token: " + token);
+
+        tokenRepository.save(token);
+    }
+
+    private void revokeAllUserTokens(Integer userId){
+        var validUserTokens = tokenRepository.findAllValidTokenByUser(userId);
+
+        if(validUserTokens.isEmpty())
+            return;
+
+        validUserTokens.forEach(token -> {
+            token.setExpired(true);
+            token.setRevoked(true);
+        });
+
+        tokenRepository.saveAll(validUserTokens);
     }
 }

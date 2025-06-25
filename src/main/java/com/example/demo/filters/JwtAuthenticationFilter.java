@@ -1,5 +1,6 @@
 package com.example.demo.filters;
 
+import com.example.demo.repositories.ITokenRepository;
 import com.example.demo.services.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -24,6 +25,7 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
+    private final ITokenRepository tokenRepository;
     private final UserDetailsService userDetailsService;
 
     @Override
@@ -47,6 +49,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (userEmail != null && authentication == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+
+                var isTokenValid = tokenRepository.findByToken(jwt)
+                        .map(t -> !t.isExpired() && !t.isRevoked())
+                        .orElse(false);
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(

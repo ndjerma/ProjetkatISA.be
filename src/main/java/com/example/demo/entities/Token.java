@@ -17,19 +17,21 @@ import lombok.NoArgsConstructor;
 public class Token {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    public Integer id;
+    private Integer id;
 
-    @Column(unique = true)
-    public String token;
+    @Column(unique = true, columnDefinition = "LONGTEXT")
+    private String token;
+    @Column(unique = true, name = "refresh_token", columnDefinition = "LONGTEXT")
+    private String refreshToken;
 
     @Enumerated(EnumType.STRING)
-    public TokenTypeEnum tokenType = TokenTypeEnum.BEARER;
+    private TokenTypeEnum tokenType = TokenTypeEnum.BEARER;
 
-    public boolean revoked;
+    private boolean revoked;
 
-    public boolean expired;
+    private boolean expired;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    public User user;
+    private User user;
 }
