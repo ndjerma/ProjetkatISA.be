@@ -4,57 +4,55 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.util.List;
 
 @Entity
 @Table(name = "products")
 @Data
 public class Product {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    @Column(name = "name")
-    private String name;
+
+    @Column(name = "title")
+    private String title;
+
     @Column(name = "user_id")
     private Integer userId;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "release_year")
+    private Integer releaseYear;
+
+    @Column(name = "director")
+    private String director;
+
+    @Column(name = "rating")
+    private BigDecimal rating;
+
+    @Column(name = "duration_minutes")
+    private Integer durationMinutes;
+
+    @Column(name = "image_url")
+    private String imageUrl;
+
+    @Column(name = "trailer_url")
+    private String trailerUrl;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private Timestamp createdAt;
+
     @ManyToMany(cascade = CascadeType.ALL)
-    @JoinTable(name = "product_categories",
+    @JoinTable(
+            name = "product_categories",
             joinColumns = @JoinColumn(name = "product_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "category_id", referencedColumnName = "id"))
+            inverseJoinColumns = @JoinColumn(name = "category_id", referencedColumnName = "id")
+    )
     @JsonManagedReference
     private List<Category> categories;
-
 }
-
-/*
-* @JoinTable(
-    name = "product_categories", // Ime međutabele
-    joinColumns = @JoinColumn(
-        name = "product_id",            // FK u međutabeli koji pokazuje na Product
-        referencedColumnName = "id"     // Na koji tačno stubac u Product entitetu se FK odnosi
-    ),
-    inverseJoinColumns = @JoinColumn(
-        name = "category_id",           // FK koji pokazuje na Category
-        referencedColumnName = "id"     // Na koji stubac u Category entitetu
-    )
-)
-*
-*
-             products              product_categories              categories
-            ---------             -------------------             ------------
-            id (PK)   <-------    product_id (FK)
-            name                  category_id (FK)    ------->    id (PK)
-                                  id (PK)                         name
-
-*
-*
-*
-*     @JsonManagedReference => objasnjenje
-*
-            Kada Jackson pokuša da napravi JSON od Product, on vidi categories,
-*           pa krene da obrađuje Category, pa vidi da Category ima products,
-*           pa opet krene da obrađuje Product, pa opet vidi categories, i tako u krug...
-*           💥 infinite recursion → StackOverflowError.
-
-
-* */

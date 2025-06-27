@@ -11,13 +11,19 @@ import com.example.demo.models.RegisterUserModel;
 import com.example.demo.models.UserModel;
 import com.example.demo.repositories.ITokenRepository;
 import com.example.demo.repositories.IUserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AuthorizationServiceException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import org.springframework.http.HttpHeaders;
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
@@ -90,4 +96,43 @@ public class AuthenticationService {
 
         tokenRepository.saveAll(validUserTokens);
     }
+
+    public LoginResponseModel refreshToken(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        final String refreshToken;
+        final String userEmail;
+
+        if(authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new AuthorizationServiceException("Unauthorized");
+        }
+
+        refreshToken = authHeader.substring(7);
+        userEmail = jwtService.extractUsername(refreshToken);
+
+        var user = userRepository.findByEmail(userEmail);
+
+        if(user.isEmpty())
+            throw new UsernameNotFoundException("User with email " + userEmail + " not found");
+
+        var userDetails = user.get();
+        if(!jwtService.isTokenValid(refreshToken, userDetails))
+            throw new AuthorizationServiceException("Unauthorized");
+
+        var accessToken = jwtService.generateToken(userDetails);
+        String refToken = jwtService.generateRefreshToken(userDetails);
+
+        revokeAllUserTokens(userDetails.getId());
+        saveUserToken(userDetails, accessToken, refToken);
+
+        return LoginResponseModel.builder()
+                .token(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+
+    }
+
+
 }

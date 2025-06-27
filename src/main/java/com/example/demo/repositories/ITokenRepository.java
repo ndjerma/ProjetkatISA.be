@@ -16,5 +16,6 @@ public interface ITokenRepository extends JpaRepository<Token, Integer> {
     """)
     List<Token> findAllValidTokenByUser(Integer id);
     Optional<Token> findByToken(String token);
+    Optional<Token> findByRefreshToken(String refreshToken);
 
 }
